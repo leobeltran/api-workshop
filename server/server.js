@@ -3,17 +3,11 @@ const bodyParser = require('body-parser');
 const app = express();
 const _ = require('lodash');
 const morgan = require('morgan');
+const mongoose = require('mongoose');
+const Lion = require('../models/lions');
 
-let lions = [];
-let id = 0;
+mongoose.connect('mongodb://santa:claus@ds133418.mlab.com:33418/christmas_list');
 
-const updateId = (req, res, next) => {
-  if(!req.body.id) {
-    id++;
-    req.body.id = id + '';
-  }
-  next();
-};
 
 //using morgan to log in the terminal, morgan comes first
 app.use(morgan('dev'));
@@ -25,69 +19,90 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Parse the data in json
 app.use(bodyParser.json());
 
-app.param('id', (req, res, next, id) => {
-  const lion = _.find(lions, {id:id});
-
-  if (lion) {
-    req.lion = lion;
-    next();
-  } else {
-    res.send();
-  }
-});
-
 /////////////////////
 // CRUD Operations //
 /////////////////////
 
 // Get lions
 app.get('/lions', (req,res) => {
-      res.json(lions);
+      Lion.find((err, lions) => {
+        if (err) {
+          res.send(err);
+        }
+        res.json(lions);
+      })
 })
 
-// Get one lion by id
+//Get one lion by id
 app.get('/lions/:id', (req,res) => {
       const lion = req.lion;
-      res.json(lion || {});
+      Lion.findById(req.params.id, (err, lion) => {
+        if (err) {
+          res.send(err);
+        }
+        res.json(lion);
+      });
 });
 
 // Create one lion
-app.post('/lions', updateId, (req,res) => {
+app.post('/lions', (req,res) => {
       // Recieve json lion objects
       let lion = req.body;
-
-      lions.push(lion);
-
-      // returning the sent object to the sender
-      res.json(lion);
+      console.log(lion);
+      const lionObjects = new Lion({
+        name : lion.name,
+        age : lion.age,
+        pride : lion.pride,
+        gender : lion.gender
+      });
+      lionObjects.save((err) => {
+        if(err) {
+          res.send(err);
+        }
+        res.json({message: 'lion created'});
+      });
 });
 
 // Update one lion by id
 app.put('/lions/:id', (req, res) => {
-      // Receive data
-      let update = req.body;
-      if (update.id) { delete update.id }
-      // find the lion
-      let lion = _.findIndex(lions, {id: req.params.id});
-      if (!lions[lion]){
-            res.send();
-      } else {
-            const updateLion = _.assign(lions[lion], update);
-            res.json(updateLion);
+    Lion.findById(req.params.id, (err, lion) => {
+      if (err) {
+        res.send();
       }
+      if (req.body.name) {
+        lion.name = req.body.name;
+      }
+      if (req.body.age) {
+        lion.age = req.body.age;
+      }
+      if (req.body.pride) {
+        lion.pride = req.body.pride;
+      }
+      if (req.body.gender) {
+        lion.gender = req.body.gender;
+      }
+      // lion.name = req.body.name;
+      // lion.age = req.body.age;
+      // lion.pride = req.body.pride;
+      // lion.gender = req.body.gender;
 
+      lion.save((err) => {
+        if(err) {
+          res.send(err);
+        }
+        res.json({message: 'Updated the lion'})
+      })
+    });
 });
 
 // Delete one lion by id
 app.delete('/lions/:id', (req, res) => {
-      const lion = _.findIndex(lions, {id: req.params.id});
-      if (!lions[lion]) {
-            res.end();
-      } else {
-            const deletedLion = lions[lion];
-            lions.splice(lion, 1);
-            res.json(deletedLion);
-      }
+      Lion.remove({_id: req.params.id}, (err,lion) => {
+        if (err) {
+          res.send(err);
+        }
+        res.json({message: 'Deleted the Lion!!'})
+      });
 });
 
 // Error catcher. this is placed last to catch err
