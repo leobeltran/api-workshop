@@ -6,7 +6,7 @@ const morgan = require('morgan');
 const mongoose = require('mongoose');
 const Lion = require('../models/lions');
 
-mongoose.connect('mongodb://santa:claus@ds133418.mlab.com:33418/christmas_list');
+mongoose.connect('mongodb://dbuser:fvistudent@ds141078.mlab.com:41078/apidatabase');
 
 
 //using morgan to log in the terminal, morgan comes first
