@@ -2,17 +2,39 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const app = express();
 const _ = require('lodash');
+const morgan = require('morgan');
 
+let lions = [];
+let id = 0;
+
+const updateId = (req, res, next) => {
+  if(!req.body.id) {
+    id++;
+    req.body.id = id + '';
+  }
+  next();
+};
+
+//using morgan to log in the terminal, morgan comes first
+app.use(morgan('dev'));
 //middleware: middleware order is impotant!
 // Accesing the index.html in the 'client folder'
 app.use(express.static('client'));
 // Parse url code
-app.use(bodyParser.urlencoded({ extrended: true }));
+app.use(bodyParser.urlencoded({ extended: true }));
 // Parse the data in json
 app.use(bodyParser.json());
 
-let lions = [];
-let id = 0;
+app.param('id', (req, res, next, id) => {
+  const lion = _.find(lions, {id:id});
+
+  if (lion) {
+    req.lion = lion;
+    next();
+  } else {
+    res.send();
+  }
+});
 
 /////////////////////
 // CRUD Operations //
@@ -25,18 +47,15 @@ app.get('/lions', (req,res) => {
 
 // Get one lion by id
 app.get('/lions/:id', (req,res) => {
-      const lion = _.find(lions,{id:req.params.id});
+      const lion = req.lion;
       res.json(lion || {});
-})
+});
 
 // Create one lion
-app.post('/lions', (req,res) => {
+app.post('/lions', updateId, (req,res) => {
       // Recieve json lion objects
       let lion = req.body;
 
-      //adding id (string) and pushing storage (array)
-      id++;
-      lion.id = id + '';
       lions.push(lion);
 
       // returning the sent object to the sender
@@ -71,6 +90,12 @@ app.delete('/lions/:id', (req, res) => {
       }
 });
 
+// Error catcher. this is placed last to catch err
+app.use((err, req, res, next) =>{
+  if (err) {
+    res.status(500).send(err);
+  }
+});
 
 const PORT = 3000;
 
